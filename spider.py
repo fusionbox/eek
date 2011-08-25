@@ -93,7 +93,6 @@ class VisitEveryEdgeClerk(VistorClerk):
             self.visited.add((url, referer))
             return (url, referer)
 
-
 def spider(base, callback, clerk):
     clerk.enqueue(base, base)
 
@@ -130,4 +129,4 @@ def graphviz_spider(base):
     print "}"
 
 if __name__ == '__main__':
-    graphviz_spider(sys.argv[1])
+    metadata_spider(sys.argv[1])
