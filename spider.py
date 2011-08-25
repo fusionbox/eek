@@ -68,23 +68,29 @@ def scrape_url(url, referer=''):
     return (links, title, description, keywords)
 
 
-class VistorClerk(object):
+class UrlTask(tuple):
+    """
+    We need to keep track of referers, but we don't want to add a url multiple
+    times just because it was referenced on multiple pages
+    """
+    def __hash__(self):
+        return hash(self[0])
+    def __eq__(self, other):
+        return self[0] == other[0]
+
+class VisitOnlyOnceClerk(object):
     def __init__(self):
         self.visited = set()
         self.to_visit = set()
     def enqueue(self, url, referer):
-        self.to_visit.add((url, referer))
+        if not url in self.visited:
+            task = UrlTask((url, referer))
+            self.to_visit.add(UrlTask((url, referer)))
     def __bool__(self):
         return bool(self.to_visit)
     def __iter__(self):
-        raise NotImplemented
-
-class VisitOnlyOnceClerk(VistorClerk):
-    def __iter__(self):
         while self.to_visit:
             (url, referer) = self.to_visit.pop()
-            if url in self.visited:
-                continue
             self.visited.add(url)
             yield (url, referer)
 
