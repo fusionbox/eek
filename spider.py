@@ -66,17 +66,40 @@ def scrape_url(url, referer=''):
     return (links, title, description, keywords)
 
 
-def spider(base):
-    visited = set()
-    to_visit = set([(base, base)])
+class VistorClerk(object):
+    def __init__(self):
+        self.visited = set()
+        self.to_visit = set()
+    def enqueue(self, url, referer):
+        self.to_visit.add((url, referer))
+    def __bool__(self):
+        return bool(self.to_visit)
+
+class VisitOnlyOnceClerk(VistorClerk):
+    def next_link(self):
+        while True:
+            (url, referer) = self.to_visit.pop()
+            if url in self.visited:
+                continue
+            self.visited.add(url)
+            return (url, referer)
+
+class VisitEveryEdgeClerk(VistorClerk):
+    def next_link(self):
+        while True:
+            (url, referer) = self.to_visit.pop()
+            if (url, referer) in self.visited:
+                continue
+            self.visited.add((url, referer))
+            return (url, referer)
+
+
+def spider(base, callback, clerk):
+    clerk.enqueue(base, base)
 
     base_domain = urlparse.urlparse(base).netloc
-    writer = csv.writer(sys.stdout)
-    while to_visit:
-        (url, referer) = to_visit.pop()
-        if  url in visited:
-            continue
-        visited.add(url)
+    while clerk:
+        (url, referer) = clerk.next_link()
         try:
             data = (links, title, description, keywords) = scrape_url(url, referer)
         except urllib2.URLError as e:
@@ -87,9 +110,24 @@ def spider(base):
         for link in links:
             parsed = urlparse.urlparse(link)
             if parsed.netloc == base_domain:
-                to_visit.add((link, url))
-        writer.writerow(data)
+                clerk.enqueue(link, url)
+        callback(url, data)
 
+
+def metadata_spider(base):
+    writer = csv.writer(sys.stdout)
+    def callback(url, data):
+        writer.writerow((url, data[1], data[2], data[3]))
+    spider(base, callback, VisitOnlyOnceClerk())
+
+
+def graphviz_spider(base):
+    def callback(url, data):
+        for link in data[0]:
+            print '  "%s" -> "%s";' % (url, link)
+    print "digraph links {"
+    spider(base, callback, VisitOnlyOnceClerk())
+    print "}"
 
 if __name__ == '__main__':
-    spider(sys.argv[1])
+    graphviz_spider(sys.argv[1])
