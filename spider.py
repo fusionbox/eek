@@ -116,7 +116,7 @@ def spider(base, callback, clerk):
 def metadata_spider(base):
     writer = csv.writer(sys.stdout)
     def callback(url, data):
-        writer.writerow((url, data[1], data[2], data[3]))
+        writer.writerow([i.encode('utf-8') for i in (url, data[1], data[2], data[3])])
     spider(base, callback, VisitOnlyOnceClerk())
 
 
