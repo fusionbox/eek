@@ -38,7 +38,9 @@ def get_url(url, referer=''):
     else:
         encoding = None
     try:
-        return BeautifulSoup(response.read(), fromEncoding=encoding)
+        bs = BeautifulSoup(response.read(), fromEncoding=encoding)
+        bs.base_url = response.geturl()
+        return bs
     except UnicodeEncodeError:
         raise NotHtmlException
 
@@ -46,7 +48,7 @@ def get_url(url, referer=''):
 def scrape_url(url, referer=''):
     html = get_url(url, referer)
 
-    links = [urlparse.urljoin(url, i['href'], False) for i in html.findAll('a', href=True)]
+    links = [urlparse.urldefrag(urlparse.urljoin(html.base_url, i['href'], False))[0] for i in html.findAll('a', href=True)]
 
     title = html.head.title.contents
     description = html.head.findAll('meta', {"name":"description"})
@@ -74,31 +76,33 @@ class VistorClerk(object):
         self.to_visit.add((url, referer))
     def __bool__(self):
         return bool(self.to_visit)
+    def __iter__(self):
+        raise NotImplemented
 
 class VisitOnlyOnceClerk(VistorClerk):
-    def next_link(self):
-        while True:
+    def __iter__(self):
+        while self.to_visit:
             (url, referer) = self.to_visit.pop()
             if url in self.visited:
                 continue
             self.visited.add(url)
-            return (url, referer)
+            yield (url, referer)
 
-class VisitEveryEdgeClerk(VistorClerk):
-    def next_link(self):
-        while True:
-            (url, referer) = self.to_visit.pop()
-            if (url, referer) in self.visited:
-                continue
-            self.visited.add((url, referer))
-            return (url, referer)
+
+def lremove(string, prefix):
+    """
+    Remove a prefix from a string, if it exists.
+    """
+    if string.startswith(prefix):
+        return string[len(prefix):]
+    else:
+        return string
 
 def spider(base, callback, clerk):
     clerk.enqueue(base, base)
 
-    base_domain = urlparse.urlparse(base).netloc
-    while clerk:
-        (url, referer) = clerk.next_link()
+    base_domain = lremove(urlparse.urlparse(base).netloc, 'www.')
+    for (url, referer) in clerk:
         try:
             data = (links, title, description, keywords) = scrape_url(url, referer)
         except urllib2.URLError as e:
@@ -108,7 +112,7 @@ def spider(base, callback, clerk):
             continue
         for link in links:
             parsed = urlparse.urlparse(link)
-            if parsed.netloc == base_domain:
+            if lremove(parsed.netloc, 'www.') == base_domain:
                 clerk.enqueue(link, url)
         callback(url, data)
 
