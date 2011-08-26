@@ -18,7 +18,6 @@ def encoding_from_content_type(content_type):
     >>> encoding_from_content_type('text/html')
     >>>
     """
-
     if not content_type:
         return None
     match = encoding_re.search(content_type)
@@ -38,33 +37,29 @@ def get_url(url, referer=''):
     else:
         encoding = None
     try:
-        bs = BeautifulSoup(response.read(), fromEncoding=encoding)
+        bs = BeautifulSoup(response.read(), fromEncoding=encoding, convertEntities=BeautifulSoup.XML_ENTITIES)
         bs.base_url = response.geturl()
         return bs
     except UnicodeEncodeError:
         raise NotHtmlException
 
 
-def scrape_url(url, referer=''):
-    html = get_url(url, referer)
-
+def scrape_html(html):
     links = [urlparse.urldefrag(urlparse.urljoin(html.base_url, i['href'], False))[0] for i in html.findAll('a', href=True)]
 
-    title = html.head.title.contents
-    description = html.head.findAll('meta', {"name":"description"})
-    keywords = html.head.findAll('meta', {"name":"keywords"})
-    if title:
-        title = title[0]
-    else:
+    try:
+        title = html.head.title.contents[0]
+    except (AttributeError, IndexError):
         title = ''
-    if description:
-        description = description[0]['content']
-    else:
+    try:
+        description = html.head.findAll('meta', {"name":"description"})[0]['content']
+    except (AttributeError, IndexError):
         description = ''
-    if keywords:
-        keywords = keywords[0]['content']
-    else:
+    try:
+        keywords = html.head.findAll('meta', {"name":"keywords"})[0]['content']
+    except (AttributeError, IndexError):
         keywords = ''
+
     return (links, title, description, keywords)
 
 
@@ -84,7 +79,6 @@ class VisitOnlyOnceClerk(object):
         self.to_visit = set()
     def enqueue(self, url, referer):
         if not url in self.visited:
-            task = UrlTask((url, referer))
             self.to_visit.add(UrlTask((url, referer)))
     def __bool__(self):
         return bool(self.to_visit)
@@ -98,6 +92,10 @@ class VisitOnlyOnceClerk(object):
 def lremove(string, prefix):
     """
     Remove a prefix from a string, if it exists.
+    >>> lremove('www.foo.com', 'www.')
+    'foo.com'
+    >>> lremove('foo.com', 'www.')
+    'foo.com'
     """
     if string.startswith(prefix):
         return string[len(prefix):]
@@ -110,7 +108,8 @@ def spider(base, callback, clerk):
     base_domain = lremove(urlparse.urlparse(base).netloc, 'www.')
     for (url, referer) in clerk:
         try:
-            data = (links, title, description, keywords) = scrape_url(url, referer)
+            html = get_url(url, referer)
+            data = (links, title, description, keywords) = scrape_html(html)
         except urllib2.URLError as e:
             sys.stderr.write('Error: %s: %s. Referred by %s\n' % (url, e, referer))
             continue
@@ -123,8 +122,8 @@ def spider(base, callback, clerk):
         callback(url, data)
 
 
-def metadata_spider(base):
-    writer = csv.writer(sys.stdout)
+def metadata_spider(base, output = sys.stdout):
+    writer = csv.writer(output)
     def callback(url, data):
         writer.writerow([i.encode('utf-8') for i in (url, data[1], data[2], data[3])])
     spider(base, callback, VisitOnlyOnceClerk())
