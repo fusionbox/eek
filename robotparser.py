@@ -111,15 +111,10 @@ class RobotFileParser:
                         entry = Entry()
                     entry.useragents.append(line[1])
                     state = 1
-                elif line[0] == "disallow":
+                elif line[0] in ("disallow", "allow", "noindex"):
                     if state != 0:
-                        entry.rulelines.append(RuleLine(line[1], False))
+                        entry.rulelines.append(RuleLine(line[1], line[0]))
                         state = 2
-                elif line[0] == "allow":
-                    if state != 0:
-                        entry.rulelines.append(RuleLine(line[1], True))
-                        state = 2
-                elif line[0]
         if state == 2:
             self.entries.append(entry)
 
@@ -198,7 +193,7 @@ class Entry:
         for line in self.rulelines:
             if line.applies_to(filename):
                 return line.allowance
-        return True
+        return 'allow'
 
 class URLopener(urllib.FancyURLopener):
     def __init__(self, *args):
