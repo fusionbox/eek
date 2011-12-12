@@ -5,7 +5,9 @@ import csv
 import sys
 from BeautifulSoup import BeautifulSoup
 import re
+import collections
 
+import robotparser # this project's version
 
 encoding_re = re.compile("charset\s*=\s*(\S+?)(;|$)")
 html_re = re.compile(": text/html")
@@ -124,8 +126,12 @@ def spider(base, callback, clerk):
 
 def metadata_spider(base, output = sys.stdout):
     writer = csv.writer(output)
+    robots = robotparser.RobotFileParser(base + '/robots.txt')
+    robots.read()
+    writer.writerow(['url', 'title', 'description', 'keywords', 'allow', 'disallow', 'noindex'])
     def callback(url, data):
-        writer.writerow([i.encode('utf-8') for i in (url, data[1], data[2], data[3])])
+        rules = applicable_robot_rules(robots, url)
+        writer.writerow([i.encode('utf-8') for i in (url, data[1], data[2], data[3], ','.join(rules['allow']), ','.join(rules['disallow']), ','.join(rules['noindex']))])
     spider(base, callback, VisitOnlyOnceClerk())
 
 
@@ -136,6 +142,14 @@ def graphviz_spider(base):
     print "digraph links {"
     spider(base, callback, VisitOnlyOnceClerk())
     print "}"
+
+def applicable_robot_rules(robots, url):
+    rules = collections.defaultdict(list)
+    if robots.default_entry:
+        rules[robots.default_entry.allowance(url)].append('*')
+    for entry in robots.entries:
+        rules[entry.allowance(url)].extend(entry.useragents)
+    return rules
 
 if __name__ == '__main__':
     metadata_spider(sys.argv[1])
