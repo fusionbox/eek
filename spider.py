@@ -128,12 +128,16 @@ def metadata_spider(base, output = sys.stdout):
     writer = csv.writer(output)
     robots = robotparser.RobotFileParser(base + '/robots.txt')
     robots.read()
-    writer.writerow(['url', 'title', 'description', 'keywords', 'allow', 'disallow', 'noindex', 'meta robots'])
+    writer.writerow(['url', 'title', 'description', 'keywords', 'allow', 'disallow', 'noindex', 'meta robots', 'canonical'])
 
     def callback(url, data, html):
         rules = applicable_robot_rules(robots, url)
         robots_meta = ','.join(i['content'] for i in html.findAll('meta', {"name":"robots"}))
-        writer.writerow([i.encode('utf-8') for i in (url, data[1], data[2], data[3], ','.join(rules['allow']), ','.join(rules['disallow']), ','.join(rules['noindex']), robots_meta)])
+        try:
+            canonical = html.findAll('link', {"rel":"canonical"})[0]['href']
+        except IndexError:
+            canonical = ''
+        writer.writerow([i.encode('utf-8') for i in (url, data[1], data[2], data[3], ','.join(rules['allow']), ','.join(rules['disallow']), ','.join(rules['noindex']), robots_meta, canonical)])
 
     spider(base, callback, VisitOnlyOnceClerk())
 
