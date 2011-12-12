@@ -121,17 +121,20 @@ def spider(base, callback, clerk):
             parsed = urlparse.urlparse(link)
             if lremove(parsed.netloc, 'www.') == base_domain:
                 clerk.enqueue(link, url)
-        callback(url, data)
+        callback(url, data, html)
 
 
 def metadata_spider(base, output = sys.stdout):
     writer = csv.writer(output)
     robots = robotparser.RobotFileParser(base + '/robots.txt')
     robots.read()
-    writer.writerow(['url', 'title', 'description', 'keywords', 'allow', 'disallow', 'noindex'])
-    def callback(url, data):
+    writer.writerow(['url', 'title', 'description', 'keywords', 'allow', 'disallow', 'noindex', 'meta robots'])
+
+    def callback(url, data, html):
         rules = applicable_robot_rules(robots, url)
-        writer.writerow([i.encode('utf-8') for i in (url, data[1], data[2], data[3], ','.join(rules['allow']), ','.join(rules['disallow']), ','.join(rules['noindex']))])
+        robots_meta = ','.join(i['content'] for i in html.findAll('meta', {"name":"robots"}))
+        writer.writerow([i.encode('utf-8') for i in (url, data[1], data[2], data[3], ','.join(rules['allow']), ','.join(rules['disallow']), ','.join(rules['noindex']), robots_meta)])
+
     spider(base, callback, VisitOnlyOnceClerk())
 
 
