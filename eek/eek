@@ -3,9 +3,17 @@ import argparse
 
 from eek.spider import *
 
-parser = argparse.ArgumentParser()
+help = {
+    'description': """
+eek recursively crawls a website, outputing metadata about each page in CSV
+format.""",
+    'epilog': """
+To save output to a file, use, for example, eek URL > ~/Desktop/some_site.csv
+"""}
+
+parser = argparse.ArgumentParser(**help)
 parser.add_argument('url', help="The base URL to start the crawl")
-parser.add_argument('--delay', default=0, type=int, help="Time, in seconds, to wait in between fetches. Defaults to 0.")
+parser.add_argument('--delay', default=0, type=int, help="Time, in seconds, to wait in between fetches. Defaults to 0.", metavar="SECONDS")
 args = parser.parse_args()
 
 metadata_spider(args.url, delay=args.delay)
