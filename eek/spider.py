@@ -55,11 +55,11 @@ def scrape_html(html):
         title = ''
     try:
         description = html.head.findAll('meta', {"name":"description"})[0]['content']
-    except (AttributeError, IndexError):
+    except (AttributeError, IndexError, KeyError):
         description = ''
     try:
         keywords = html.head.findAll('meta', {"name":"keywords"})[0]['content']
-    except (AttributeError, IndexError):
+    except (AttributeError, IndexError, KeyError):
         keywords = ''
 
     return (links, title, description, keywords)
