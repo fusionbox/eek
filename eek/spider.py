@@ -2,11 +2,12 @@ import urllib2
 import urlparse
 import csv
 import sys
-from eek.BeautifulSoup import BeautifulSoup
 import re
 import collections
+import time
 
 from eek import robotparser # this project's version
+from eek.BeautifulSoup import BeautifulSoup
 
 encoding_re = re.compile("charset\s*=\s*(\S+?)(;|$)")
 html_re = re.compile(": text/html")
@@ -123,7 +124,7 @@ def spider(base, callback, clerk):
         callback(url, data, html)
 
 
-def metadata_spider(base, output = sys.stdout):
+def metadata_spider(base, output = sys.stdout, delay = 0):
     writer = csv.writer(output)
     robots = robotparser.RobotFileParser(base + '/robots.txt')
     robots.read()
@@ -137,6 +138,8 @@ def metadata_spider(base, output = sys.stdout):
         except IndexError:
             canonical = ''
         writer.writerow([i.encode('utf-8') for i in (url, data[1], data[2], data[3], ','.join(rules['allow']), ','.join(rules['disallow']), ','.join(rules['noindex']), robots_meta, canonical)])
+        if delay:
+            time.sleep(delay)
 
     spider(base, callback, VisitOnlyOnceClerk())
 

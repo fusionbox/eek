@@ -7,6 +7,12 @@ __doc__="""
 Eek is an HTTP spider that collects metadata from HTML
 """
 
+install_requires = []
+try:
+    import argparse
+except:
+    install_requires.append('argparse')
+
 version = '0.0.1'
 
 setup(name='Eek',
@@ -19,4 +25,5 @@ setup(name='Eek',
     scripts=['eek/eek'],
     platforms = "any",
     license='BSD',
+    install_requires=install_requires,
 )

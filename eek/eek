@@ -1,4 +1,11 @@
 #! /usr/bin/env python
+import argparse
 
 from eek.spider import *
-metadata_spider(sys.argv[1])
+
+parser = argparse.ArgumentParser()
+parser.add_argument('url', help="The base URL to start the crawl")
+parser.add_argument('--delay', default=0, type=int, help="Time, in seconds, to wait in between fetches. Defaults to 0.")
+args = parser.parse_args()
+
+metadata_spider(args.url, delay=args.delay)
