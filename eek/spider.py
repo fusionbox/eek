@@ -29,7 +29,10 @@ class NotHtmlException(Exception):
     pass
 
 def get_url(url, referer=''):
-    req = urllib2.Request(url, None, {'User-Agent': 'Fusionbox spider', 'Referer': referer})
+    req = urllib2.Request(
+            url.encode('utf-8'),
+            None,
+            {'User-Agent': 'Fusionbox spider', 'Referer': referer.encode('utf-8')})
     response = urllib2.urlopen(req)
     content_type = response.info().getfirstmatchingheader('content-type')
     if content_type:
