@@ -128,6 +128,8 @@ def spider(base, callback, clerk):
 
 
 def metadata_spider(base, output = sys.stdout, delay = 0):
+    if not urlparse.urlparse(base).scheme:
+        base = 'http://' + base
     writer = csv.writer(output)
     robots = robotparser.RobotFileParser(base + '/robots.txt')
     robots.read()
