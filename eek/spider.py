@@ -147,7 +147,16 @@ def metadata_spider(base, output = sys.stdout, delay = 0):
             canonical = html.findAll('link', {"rel":"canonical"})[0]['href']
         except IndexError:
             canonical = ''
-        writer.writerow([i.encode('utf-8') for i in (url, data[1], data[2], data[3], ','.join(rules['allow']), ','.join(rules['disallow']), ','.join(rules['noindex']), robots_meta, canonical)])
+        writer.writerow([(i.encode('utf-8') if isinstance(i, unicode) else i)
+                           for i in (
+                               url,
+                               data[1],
+                               data[2],
+                               data[3],
+                               ','.join(rules['allow']),
+                               ','.join(rules['disallow']),
+                               ','.join(rules['noindex']),
+                               robots_meta, canonical)])
         if delay:
             time.sleep(delay)
 
