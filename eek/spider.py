@@ -178,7 +178,7 @@ def graphviz_spider(base, delay=0):
     print "digraph links {"
     for referer, response in get_pages(base, VisitOnlyOnceClerk()):
         for link in get_links(response):
-            print '  "%s" -> "%s";' % (response.url, link)
+            print '  "%s" -> "%s";' % (force_bytes(response.url), force_bytes(link))
             if delay:
                 time.sleep(delay)
     print "}"
