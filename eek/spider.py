@@ -9,6 +9,8 @@ import requests
 from eek import robotparser  # this project's version
 from eek.BeautifulSoup import BeautifulSoup
 
+from lxml import html
+
 
 encoding_re = re.compile("charset\s*=\s*(\S+?)(;|$)")
 html_re = re.compile("text/html")
@@ -73,29 +75,17 @@ def lremove(string, prefix):
 
 
 def beautify(response):
-    content_type = response.headers['content-type']
-    if content_type:
-        if not html_re.search(content_type):
-            raise NotHtmlException
-        encoding = encoding_from_content_type(content_type)
-    else:
-        encoding = None
-    try:
-        return BeautifulSoup(
-                response.content,
-                fromEncoding=encoding,
-                convertEntities=BeautifulSoup.HTML_ENTITIES)
-    except UnicodeEncodeError:
+    if not response.content:
         raise NotHtmlException
+    return html.fromstring(response.content)
 
 
 def get_links(response):
     try:
         html = beautify(response)
-        for i in html.findAll('a', href=True):
-            yield urlparse.urldefrag(urlparse.urljoin(response.url, i['href'], False))[0]
+        return [urlparse.urldefrag(urlparse.urljoin(response.url, i))[0] for i in html.xpath('//a/@href')]
     except NotHtmlException:
-        pass
+        return []
 
 
 def force_bytes(str_or_unicode):
@@ -134,39 +124,33 @@ def metadata_spider(base, output=sys.stdout, delay=0):
     for referer, response in get_pages(base, VisitOnlyOnceClerk()):
         rules = applicable_robot_rules(robots, response.url)
 
-        robots_meta = canonical = title = description = keywords = ''
+        results = collections.defaultdict(str)
         try:
             html = beautify(response)
-            robots_meta = ','.join(i['content'] for i in html.findAll('meta', {"name": "robots"}))
-            try:
-                canonical = html.findAll('link', {"rel": "canonical"})[0]['href']
-            except IndexError:
-                pass
-            try:
-                title = html.head.title.contents[0]
-            except (AttributeError, IndexError):
-                pass
-            try:
-                description = html.head.findAll('meta', {"name": "description"})[0]['content']
-            except (AttributeError, IndexError, KeyError):
-                pass
-            try:
-                keywords = html.head.findAll('meta', {"name": "keywords"})[0]['content']
-            except (AttributeError, IndexError, KeyError):
-                pass
+            paths = {
+                    'robots_meta': '//meta[@name="robots"]/@content',
+                    'canonical': '//link[@rel="canonical"]/@href',
+                    'title': '//head//title/text()',
+                    'description': '//head//meta[@name="description"]/@content',
+                    'keywords': '//head//meta[@name="keywords"]/@content',
+                    }
+
+            for key in paths:
+                results[key] = ','.join(html.xpath(paths[key]))
+
         except NotHtmlException:
             pass
 
         writer.writerow(map(force_bytes, [
             response.url,
-            title,
-            description,
-            keywords,
+            results['title'],
+            results['description'],
+            results['keywords'],
             ','.join(rules['allow']),
             ','.join(rules['disallow']),
             ','.join(rules['noindex']),
-            robots_meta,
-            canonical,
+            results['robots_meta'],
+            results['canonical'],
             referer,
             response.status_code,
             ]))
