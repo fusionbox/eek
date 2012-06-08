@@ -49,7 +49,7 @@ def get_url(url, referer=''):
     try:
         bs = BeautifulSoup(response.read(), fromEncoding=encoding, convertEntities=BeautifulSoup.XML_ENTITIES)
         bs.base_url = response.geturl()
-        return bs
+        return bs, response
     except UnicodeEncodeError:
         raise NotHtmlException
 
@@ -118,18 +118,18 @@ def spider(base, callback, clerk):
     base_domain = lremove(urlparse.urlparse(base).netloc, 'www.')
     for (url, referer) in clerk:
         try:
-            html = get_url(url, referer)
-            data = (links, title, description, keywords) = scrape_html(html)
+            html, response = get_url(url, referer)
         except urllib2.URLError as e:
             sys.stderr.write('Error: %s: %s. Referred by %s\n' % (url, e, referer))
-            continue
+            response = e
         except NotHtmlException:
             continue
+        data = (links, title, description, keywords) = scrape_html(html)
         for link in links:
             parsed = urlparse.urlparse(link)
             if lremove(parsed.netloc, 'www.') == base_domain:
                 clerk.enqueue(link, url)
-        callback(url, data, html)
+        callback(url, data, html, response)
 
 
 def metadata_spider(base, output = sys.stdout, delay = 0):
@@ -138,9 +138,9 @@ def metadata_spider(base, output = sys.stdout, delay = 0):
     writer = csv.writer(output)
     robots = robotparser.RobotFileParser(base + '/robots.txt')
     robots.read()
-    writer.writerow(['url', 'title', 'description', 'keywords', 'allow', 'disallow', 'noindex', 'meta robots', 'canonical'])
+    writer.writerow(['url', 'title', 'description', 'keywords', 'allow', 'disallow', 'noindex', 'meta robots', 'canonical', 'status'])
 
-    def callback(url, data, html):
+    def callback(url, data, html, response):
         rules = applicable_robot_rules(robots, url)
         robots_meta = ','.join(i['content'] for i in html.findAll('meta', {"name":"robots"}))
         try:
@@ -156,7 +156,10 @@ def metadata_spider(base, output = sys.stdout, delay = 0):
                                ','.join(rules['allow']),
                                ','.join(rules['disallow']),
                                ','.join(rules['noindex']),
-                               robots_meta, canonical)])
+                               robots_meta,
+                               canonical,
+                               response.code,
+                               )])
         if delay:
             time.sleep(delay)
 
