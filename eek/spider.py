@@ -90,6 +90,9 @@ def beautify(response):
 
 
 def get_links(response):
+    if 300 <= response.status_code < 400 and response.headers['location']:
+        # redirect
+        yield urlparse.urldefrag(urlparse.urljoin(response.url, response.headers['location'], False))[0]
     try:
         html = beautify(response)
         for i in html.findAll('a', href=True):
