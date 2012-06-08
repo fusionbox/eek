@@ -13,7 +13,11 @@ To save output to a file, use, for example, eek URL > ~/Desktop/some_site.csv
 
 parser = argparse.ArgumentParser(**help)
 parser.add_argument('url', help="The base URL to start the crawl")
+parser.add_argument('--graph', default=False, const=True, help="output a graphviz digraph of links instead of CSV metadata", action='store_const')
 parser.add_argument('--delay', default=0, type=int, help="Time, in seconds, to wait in between fetches. Defaults to 0.", metavar="SECONDS")
 args = parser.parse_args()
 
-metadata_spider(args.url, delay=args.delay)
+if args.graph:
+    graphviz_spider(args.url, delay=args.delay)
+else:
+    metadata_spider(args.url, delay=args.delay)

@@ -174,11 +174,13 @@ def metadata_spider(base, output=sys.stdout, delay=0):
             time.sleep(delay)
 
 
-def graphviz_spider(base):
+def graphviz_spider(base, delay=0):
     print "digraph links {"
     for referer, response in get_pages(base, VisitOnlyOnceClerk()):
         for link in get_links(response):
             print '  "%s" -> "%s";' % (response.url, link)
+            if delay:
+                time.sleep(delay)
     print "}"
 
 
