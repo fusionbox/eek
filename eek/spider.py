@@ -1,16 +1,17 @@
-import urllib2
 import urlparse
 import csv
 import sys
 import re
 import collections
 import time
+import requests
 
-from eek import robotparser # this project's version
+from eek import robotparser  # this project's version
 from eek.BeautifulSoup import BeautifulSoup
 
+
 encoding_re = re.compile("charset\s*=\s*(\S+?)(;|$)")
-html_re = re.compile(": text/html")
+html_re = re.compile("text/html")
 def encoding_from_content_type(content_type):
     """
     Extracts the charset from a Content-Type header.
@@ -25,52 +26,9 @@ def encoding_from_content_type(content_type):
     match = encoding_re.search(content_type)
     return match and match.group(1) or None
 
+
 class NotHtmlException(Exception):
     pass
-
-def get_url(url, referer=''):
-    if isinstance(url, unicode):
-        url = url.encode('utf-8')
-    if isinstance(referer, unicode):
-        referer = referer.encode('utf-8')
-
-    req = urllib2.Request(
-            url,
-            None,
-            {'User-Agent': 'Fusionbox spider', 'Referer': referer})
-    response = urllib2.urlopen(req)
-    content_type = response.info().getfirstmatchingheader('content-type')
-    if content_type:
-        if not html_re.search(content_type[0]):
-            raise NotHtmlException
-        encoding = encoding_from_content_type(content_type[0])
-    else:
-        encoding = None
-    try:
-        bs = BeautifulSoup(response.read(), fromEncoding=encoding, convertEntities=BeautifulSoup.XML_ENTITIES)
-        bs.base_url = response.geturl()
-        return bs
-    except UnicodeEncodeError:
-        raise NotHtmlException
-
-
-def scrape_html(html):
-    links = [urlparse.urldefrag(urlparse.urljoin(html.base_url, i['href'].strip(), False))[0] for i in html.findAll('a', href=True)]
-
-    try:
-        title = html.head.title.contents[0]
-    except (AttributeError, IndexError):
-        title = ''
-    try:
-        description = html.head.findAll('meta', {"name":"description"})[0]['content']
-    except (AttributeError, IndexError, KeyError):
-        description = ''
-    try:
-        keywords = html.head.findAll('meta', {"name":"keywords"})[0]['content']
-    except (AttributeError, IndexError, KeyError):
-        keywords = ''
-
-    return (links, title, description, keywords)
 
 
 class UrlTask(tuple):
@@ -82,6 +40,7 @@ class UrlTask(tuple):
         return hash(self[0])
     def __eq__(self, other):
         return self[0] == other[0]
+
 
 class VisitOnlyOnceClerk(object):
     def __init__(self):
@@ -112,53 +71,35 @@ def lremove(string, prefix):
     else:
         return string
 
-def spider(base, callback, clerk):
-    clerk.enqueue(base, base)
 
-    base_domain = lremove(urlparse.urlparse(base).netloc, 'www.')
-    for (url, referer) in clerk:
-        try:
-            html = get_url(url, referer)
-            data = (links, title, description, keywords) = scrape_html(html)
-        except urllib2.URLError as e:
-            sys.stderr.write('Error: %s: %s. Referred by %s\n' % (url, e, referer))
-            continue
-        except NotHtmlException:
-            continue
-        for link in links:
-            parsed = urlparse.urlparse(link)
-            if lremove(parsed.netloc, 'www.') == base_domain:
-                clerk.enqueue(link, url)
-        callback(url, data, html)
+def beautify(response):
+    content_type = response.headers['content-type']
+    if content_type:
+        if not html_re.search(content_type):
+            raise NotHtmlException
+        encoding = encoding_from_content_type(content_type)
+    else:
+        encoding = None
+    try:
+        return BeautifulSoup(
+                response.content,
+                fromEncoding=encoding,
+                convertEntities=BeautifulSoup.HTML_ENTITIES)
+    except UnicodeEncodeError:
+        raise NotHtmlException
 
 
-def metadata_spider(base, output = sys.stdout, delay = 0):
-    writer = csv.writer(output)
-    robots = robotparser.RobotFileParser(base + '/robots.txt')
-    robots.read()
-    writer.writerow(['url', 'title', 'description', 'keywords', 'allow', 'disallow', 'noindex', 'meta robots', 'canonical'])
+def get_links(response):
+    if 300 <= response.status_code < 400 and response.headers['location']:
+        # redirect
+        yield urlparse.urldefrag(urlparse.urljoin(response.url, response.headers['location'], False))[0]
+    try:
+        html = beautify(response)
+        for i in html.findAll('a', href=True):
+            yield urlparse.urldefrag(urlparse.urljoin(response.url, i['href'], False))[0]
+    except NotHtmlException:
+        pass
 
-    def callback(url, data, html):
-        rules = applicable_robot_rules(robots, url)
-        robots_meta = ','.join(i['content'] for i in html.findAll('meta', {"name":"robots"}))
-        try:
-            canonical = html.findAll('link', {"rel":"canonical"})[0]['href']
-        except IndexError:
-            canonical = ''
-        writer.writerow([(i.encode('utf-8') if isinstance(i, unicode) else i)
-                           for i in (
-                               url,
-                               data[1],
-                               data[2],
-                               data[3],
-                               ','.join(rules['allow']),
-                               ','.join(rules['disallow']),
-                               ','.join(rules['noindex']),
-                               robots_meta, canonical)])
-        if delay:
-            time.sleep(delay)
-
-    spider(base, callback, VisitOnlyOnceClerk())
 
 def force_unicode(s):
     if isinstance(s, str):
@@ -166,26 +107,102 @@ def force_unicode(s):
     else:
         return s
 
-def grep_spider(url, pattern, delay = 0, insensitive=False):
+
+def force_bytes(str_or_unicode):
+    if isinstance(str_or_unicode, unicode):
+        return str_or_unicode.encode('utf-8')
+    else:
+        return str_or_unicode
+
+
+def get_pages(base, clerk):
+    clerk.enqueue(base, base)
+    base_domain = lremove(urlparse.urlparse(base).netloc, 'www.')
+    for (url, referer) in clerk:
+        url = force_bytes(url)
+        referer = force_bytes(referer)
+        response = requests.get(
+                url,
+                headers={'Referer': referer, 'User-Agent': 'Fusionbox spider'},
+                allow_redirects=False)
+        for link in get_links(response):
+            parsed = urlparse.urlparse(link)
+            if lremove(parsed.netloc, 'www.') == base_domain:
+                clerk.enqueue(link, url)
+        yield referer, response
+
+
+def metadata_spider(base, output=sys.stdout, delay=0):
+    writer = csv.writer(output)
+    robots = robotparser.RobotFileParser(base + '/robots.txt')
+    robots.read()
+    writer.writerow(['url', 'title', 'description', 'keywords', 'allow', 'disallow',
+                     'noindex', 'meta robots', 'canonical', 'referer', 'status'])
+
+    for referer, response in get_pages(base, VisitOnlyOnceClerk()):
+        rules = applicable_robot_rules(robots, response.url)
+
+        robots_meta = canonical = title = description = keywords = ''
+        try:
+            html = beautify(response)
+            robots_meta = ','.join(i['content'] for i in html.findAll('meta', {"name": "robots"}))
+            try:
+                canonical = html.findAll('link', {"rel": "canonical"})[0]['href']
+            except IndexError:
+                pass
+            try:
+                title = html.head.title.contents[0]
+            except (AttributeError, IndexError):
+                pass
+            try:
+                description = html.head.findAll('meta', {"name": "description"})[0]['content']
+            except (AttributeError, IndexError, KeyError):
+                pass
+            try:
+                keywords = html.head.findAll('meta', {"name": "keywords"})[0]['content']
+            except (AttributeError, IndexError, KeyError):
+                pass
+        except NotHtmlException:
+            pass
+
+        writer.writerow(map(force_bytes, [
+            response.url,
+            title,
+            description,
+            keywords,
+            ','.join(rules['allow']),
+            ','.join(rules['disallow']),
+            ','.join(rules['noindex']),
+            robots_meta,
+            canonical,
+            referer,
+            response.status_code,
+            ]))
+        if delay:
+            time.sleep(delay)
+
+
+def grep_spider(base, pattern, delay=0, insensitive=False):
     flags = 0
     if insensitive:
         flags |= re.IGNORECASE
     pattern = re.compile(pattern, flags)
-    def callback(url, data, html):
-        for line in str(html).split('\n'):
+
+    for referer, response in get_pages(base, VisitOnlyOnceClerk()):
+        for line in response.content.split('\n'):
             if pattern.search(line):
-                print u'%s:%s' % (force_unicode(url), force_unicode(line))
+                print u'%s:%s' % (force_unicode(response.url), force_unicode(line))
         if delay:
             time.sleep(delay)
-    spider(url, callback, VisitOnlyOnceClerk())
 
 
-def graphviz_spider(base):
-    def callback(url, data):
-        for link in data[0]:
-            print '  "%s" -> "%s";' % (url, link)
+def graphviz_spider(base, delay=0):
     print "digraph links {"
-    spider(base, callback, VisitOnlyOnceClerk())
+    for referer, response in get_pages(base, VisitOnlyOnceClerk()):
+        for link in get_links(response):
+            print '  "%s" -> "%s";' % (force_bytes(response.url), force_bytes(link))
+            if delay:
+                time.sleep(delay)
     print "}"
 
 

@@ -7,7 +7,7 @@ __doc__="""
 Eek is an HTTP spider that collects metadata from HTML
 """
 
-install_requires = []
+install_requires = ['requests']
 try:
     import argparse
 except:
