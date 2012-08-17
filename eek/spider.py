@@ -55,7 +55,7 @@ def get_url(url, referer=''):
 
 
 def scrape_html(html):
-    links = [urlparse.urldefrag(urlparse.urljoin(html.base_url, i['href'], False))[0] for i in html.findAll('a', href=True)]
+    links = [urlparse.urldefrag(urlparse.urljoin(html.base_url, i['href'].strip(), False))[0] for i in html.findAll('a', href=True)]
 
     try:
         title = html.head.title.contents[0]
@@ -133,8 +133,6 @@ def spider(base, callback, clerk):
 
 
 def metadata_spider(base, output = sys.stdout, delay = 0):
-    if not urlparse.urlparse(base).scheme:
-        base = 'http://' + base
     writer = csv.writer(output)
     robots = robotparser.RobotFileParser(base + '/robots.txt')
     robots.read()
@@ -162,6 +160,25 @@ def metadata_spider(base, output = sys.stdout, delay = 0):
 
     spider(base, callback, VisitOnlyOnceClerk())
 
+def force_unicode(s):
+    if isinstance(s, str):
+        return unicode(s, encoding='utf-8')
+    else:
+        return s
+
+def grep_spider(url, pattern, delay = 0, insensitive=False):
+    flags = 0
+    if insensitive:
+        flags |= re.IGNORECASE
+    pattern = re.compile(pattern, flags)
+    def callback(url, data, html):
+        for line in str(html).split('\n'):
+            if pattern.search(line):
+                print u'%s:%s' % (force_unicode(url), force_unicode(line))
+        if delay:
+            time.sleep(delay)
+    spider(url, callback, VisitOnlyOnceClerk())
+
 
 def graphviz_spider(base):
     def callback(url, data):
@@ -170,6 +187,7 @@ def graphviz_spider(base):
     print "digraph links {"
     spider(base, callback, VisitOnlyOnceClerk())
     print "}"
+
 
 def applicable_robot_rules(robots, url):
     rules = collections.defaultdict(list)

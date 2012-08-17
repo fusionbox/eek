@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 import argparse
+import urlparse
 
 from eek.spider import *
 
@@ -12,8 +13,21 @@ To save output to a file, use, for example, eek URL > ~/Desktop/some_site.csv
 """}
 
 parser = argparse.ArgumentParser(**help)
-parser.add_argument('url', help="The base URL to start the crawl")
+parser.add_argument('url', help="The base URL to start the crawl", metavar='URL')
 parser.add_argument('--delay', default=0, type=int, help="Time, in seconds, to wait in between fetches. Defaults to 0.", metavar="SECONDS")
+parser.add_argument('--grep', type=str, help="Print urls containing PATTERN (a python regular expression).", metavar="PATTERN")
+parser.add_argument('-i', '--ignore-case', action='store_true', help="Ignore case. Only valid with --grep", dest="insensitive")
 args = parser.parse_args()
 
-metadata_spider(args.url, delay=args.delay)
+base = args.url
+if not urlparse.urlparse(base).scheme:
+    base = 'http://' + base
+
+if args.grep:
+    grep_spider(base, delay=args.delay, pattern=args.grep, insensitive=args.insensitive)
+elif args.insensitive:
+    sys.stdout.write("You can't use -i without --grep\n")
+    parser.print_help()
+    sys.exit(2)
+else:
+    metadata_spider(base, delay=args.delay)
