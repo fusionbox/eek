@@ -54,4 +54,4 @@ except Exception as e:
     if args.verbose:
         raise
     else:
-        sys.stderr.write("Error: %s\n" % e.message)
+        sys.stderr.write("Error: %s\n" % e)
