@@ -1,1 +1,4 @@
+Eek.egg-info/
+build/
+dist/
 *.pyc
