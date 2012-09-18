@@ -18,6 +18,8 @@ parser.add_argument('--graph', default=False, const=True, help="output a graphvi
 parser.add_argument('--delay', default=0, type=int, help="Time, in seconds, to wait in between fetches. Defaults to 0.", metavar="SECONDS")
 parser.add_argument('--grep', type=str, help="Print urls containing PATTERN (a python regular expression).", metavar="PATTERN")
 parser.add_argument('-i', '--ignore-case', action='store_true', help="Ignore case. Only valid with --grep", dest="insensitive")
+parser.add_argument('-k', '--insecure', action='store_true', help="Don't validate SSL certificates", dest="insecure")
+parser.add_argument('-v', '--verbose', action='store_true', help="Be verbose", dest="verbose")
 args = parser.parse_args()
 
 base = args.url
@@ -29,12 +31,27 @@ if args.grep and args.graph:
     parser.print_help()
     sys.exit(2)
 elif args.grep:
-    grep_spider(base, delay=args.delay, pattern=args.grep, insensitive=args.insensitive)
+    command = grep_spider
+    kwargs = dict(base=base, delay=args.delay, pattern=args.grep, insensitive=args.insensitive, insecure=args.insecure)
 elif args.insensitive:
     sys.stdout.write("You can't use -i without --grep\n")
     parser.print_help()
     sys.exit(2)
 elif args.graph:
-    graphviz_spider(args.url, delay=args.delay)
+    command = graphviz_spider
+    kwargs = dict(base=base, delay=args.delay, insecure=args.insecure)
 else:
-    metadata_spider(base, delay=args.delay)
+    command = metadata_spider
+    kwargs = dict(base=base, delay=args.delay, insecure=args.insecure)
+
+try:
+    command(**kwargs)
+except requests.exceptions.SSLError as e:
+    sys.stderr.write('%s: perhaps try with -k?\n' % e)
+    if args.verbose:
+        raise
+except Exception as e:
+    if args.verbose:
+        raise
+    else:
+        sys.stderr.write("Error: %s\n" % e.message)

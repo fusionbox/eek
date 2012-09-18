@@ -115,13 +115,13 @@ def force_bytes(str_or_unicode):
         return str_or_unicode
 
 
-def get_pages(base, clerk):
+def get_pages(base, clerk, session=requests.session()):
     clerk.enqueue(base, base)
     base_domain = lremove(urlparse.urlparse(base).netloc, 'www.')
     for (url, referer) in clerk:
         url = force_bytes(url)
         referer = force_bytes(referer)
-        response = requests.get(
+        response = session.get(
                 url,
                 headers={'Referer': referer, 'User-Agent': 'Fusionbox spider'},
                 allow_redirects=False)
@@ -132,14 +132,15 @@ def get_pages(base, clerk):
         yield referer, response
 
 
-def metadata_spider(base, output=sys.stdout, delay=0):
+def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
     writer = csv.writer(output)
     robots = robotparser.RobotFileParser(base + '/robots.txt')
     robots.read()
     writer.writerow(['url', 'title', 'description', 'keywords', 'allow', 'disallow',
                      'noindex', 'meta robots', 'canonical', 'referer', 'status'])
 
-    for referer, response in get_pages(base, VisitOnlyOnceClerk()):
+    session = requests.session(verify=not insecure)
+    for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):
         rules = applicable_robot_rules(robots, response.url)
 
         robots_meta = canonical = title = description = keywords = ''
@@ -182,13 +183,14 @@ def metadata_spider(base, output=sys.stdout, delay=0):
             time.sleep(delay)
 
 
-def grep_spider(base, pattern, delay=0, insensitive=False):
+def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False):
     flags = 0
     if insensitive:
         flags |= re.IGNORECASE
     pattern = re.compile(pattern, flags)
 
-    for referer, response in get_pages(base, VisitOnlyOnceClerk()):
+    session = requests.session(verify=not insecure)
+    for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):
         for line in response.content.split('\n'):
             if pattern.search(line):
                 print u'%s:%s' % (force_unicode(response.url), force_unicode(line))
@@ -196,9 +198,10 @@ def grep_spider(base, pattern, delay=0, insensitive=False):
             time.sleep(delay)
 
 
-def graphviz_spider(base, delay=0):
+def graphviz_spider(base, delay=0, insecure=False):
     print "digraph links {"
-    for referer, response in get_pages(base, VisitOnlyOnceClerk()):
+    session = requests.session(verify=not insecure)
+    for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):
         for link in get_links(response):
             print '  "%s" -> "%s";' % (force_bytes(response.url), force_bytes(link))
             if delay:
