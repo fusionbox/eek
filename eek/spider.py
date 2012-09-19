@@ -6,7 +6,8 @@ import collections
 import time
 import requests
 import gevent
-from gevent import queue
+from gevent import coros, queue, monkey
+monkey.patch_all(thread=False)
 
 from eek import robotparser  # this project's version
 from eek.BeautifulSoup import BeautifulSoup
@@ -40,17 +41,13 @@ class VisitOnlyOnceClerk(object):
         self.to_visit = queue.JoinableQueue()
     def enqueue(self, url, referer):
         if not url in self.visited:
-            self.to_visit.put_nowait((url, referer))
+            self.to_visit.put((url, referer))
+            self.visited.add(url)
     def __bool__(self):
         return bool(self.to_visit)
     def __iter__(self):
         for url, referer in self.to_visit:
-            self.visited.add(url)
             yield (url, referer)
-    def get(self):
-        url, referer = self.to_visit.get()
-        self.visited.add(url)
-        return url, referer
     def task_done(self):
         self.to_visit.task_done()
 
@@ -111,10 +108,10 @@ def force_bytes(str_or_unicode):
     else:
         return str_or_unicode
 
+
 def fetcher_thread(clerk, results_queue, base_domain):
     session = requests.session()
-    while True:
-        url, referer = clerk.get()
+    for url, referer in clerk:
         url = force_bytes(url)
         referer = force_bytes(referer)
         response = session.get(
@@ -129,20 +126,20 @@ def fetcher_thread(clerk, results_queue, base_domain):
         clerk.task_done()
 
 
-def get_pages(base, clerk, session=requests.session()):
-    workers = 4
+def get_pages(base, clerk, session=requests.session(), workers=2):
     base_domain = lremove(urlparse.urlparse(base).netloc, 'www.')
     results_queue = queue.Queue()
     clerk.enqueue(base, base)
-    greenlets = []
+
     for w in range(workers):
-        greenlets.append(gevent.spawn(fetcher_thread, clerk, results_queue,
-                                    base_domain))
+        gevent.spawn(fetcher_thread, clerk, results_queue, base_domain)
+
     for i in results_queue:
         yield i
         if (clerk.to_visit.unfinished_tasks == 0 and clerk.to_visit.empty() and
             results_queue.empty()):
             raise StopIteration
+
 
 def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
     writer = csv.writer(output)
