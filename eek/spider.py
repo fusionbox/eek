@@ -125,7 +125,6 @@ def fetcher_thread(clerk, results_queue, base_domain):
             parsed = urlparse.urlparse(link)
             if lremove(parsed.netloc, 'www.') == base_domain:
                 clerk.enqueue(link, url)
-                print clerk.to_visit.unfinished_tasks
         results_queue.put((referer, response))
         clerk.task_done()
 
