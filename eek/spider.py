@@ -5,6 +5,8 @@ import re
 import collections
 import time
 import requests
+import gevent
+from gevent import queue
 
 from eek import robotparser  # this project's version
 from eek.BeautifulSoup import BeautifulSoup
@@ -31,31 +33,26 @@ class NotHtmlException(Exception):
     pass
 
 
-class UrlTask(tuple):
-    """
-    We need to keep track of referers, but we don't want to add a url multiple
-    times just because it was referenced on multiple pages
-    """
-    def __hash__(self):
-        return hash(self[0])
-    def __eq__(self, other):
-        return self[0] == other[0]
-
 
 class VisitOnlyOnceClerk(object):
     def __init__(self):
         self.visited = set()
-        self.to_visit = set()
+        self.to_visit = queue.JoinableQueue()
     def enqueue(self, url, referer):
         if not url in self.visited:
-            self.to_visit.add(UrlTask((url, referer)))
+            self.to_visit.put_nowait((url, referer))
     def __bool__(self):
         return bool(self.to_visit)
     def __iter__(self):
-        while self.to_visit:
-            (url, referer) = self.to_visit.pop()
+        for url, referer in self.to_visit:
             self.visited.add(url)
             yield (url, referer)
+    def get(self):
+        url, referer = self.to_visit.get()
+        self.visited.add(url)
+        return url, referer
+    def task_done(self):
+        self.to_visit.task_done()
 
 
 def lremove(string, prefix):
@@ -114,11 +111,10 @@ def force_bytes(str_or_unicode):
     else:
         return str_or_unicode
 
-
-def get_pages(base, clerk, session=requests.session()):
-    clerk.enqueue(base, base)
-    base_domain = lremove(urlparse.urlparse(base).netloc, 'www.')
-    for (url, referer) in clerk:
+def fetcher_thread(clerk, results_queue, base_domain):
+    session = requests.session()
+    while True:
+        url, referer = clerk.get()
         url = force_bytes(url)
         referer = force_bytes(referer)
         response = session.get(
@@ -129,8 +125,25 @@ def get_pages(base, clerk, session=requests.session()):
             parsed = urlparse.urlparse(link)
             if lremove(parsed.netloc, 'www.') == base_domain:
                 clerk.enqueue(link, url)
-        yield referer, response
+                print clerk.to_visit.unfinished_tasks
+        results_queue.put((referer, response))
+        clerk.task_done()
 
+
+def get_pages(base, clerk, session=requests.session()):
+    workers = 4
+    base_domain = lremove(urlparse.urlparse(base).netloc, 'www.')
+    results_queue = queue.Queue()
+    clerk.enqueue(base, base)
+    greenlets = []
+    for w in range(workers):
+        greenlets.append(gevent.spawn(fetcher_thread, clerk, results_queue,
+                                    base_domain))
+    for i in results_queue:
+        yield i
+        if (clerk.to_visit.unfinished_tasks == 0 and clerk.to_visit.empty() and
+            results_queue.empty()):
+            raise StopIteration
 
 def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
     writer = csv.writer(output)
