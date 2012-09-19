@@ -6,7 +6,7 @@ import collections
 import time
 import requests
 import gevent
-from gevent import coros, queue, monkey
+from gevent import util, queue, monkey
 monkey.patch_all(thread=False)
 
 from eek import robotparser  # this project's version
@@ -109,8 +109,8 @@ def force_bytes(str_or_unicode):
         return str_or_unicode
 
 
-def fetcher_thread(clerk, results_queue, base_domain):
-    session = requests.session()
+def fetcher_thread(clerk, results_queue, base_domain, session_settings):
+    session = requests.session(**session_settings)
     for url, referer in clerk:
         url = force_bytes(url)
         referer = force_bytes(referer)
@@ -148,8 +148,9 @@ def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
     writer.writerow(['url', 'title', 'description', 'keywords', 'allow', 'disallow',
                      'noindex', 'meta robots', 'canonical', 'referer', 'status'])
 
-    session = requests.session(verify=not insecure)
-    for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):
+    for referer, response in get_pages(base,
+                                       VisitOnlyOnceClerk(),
+                                       session_settings={'verify': not insecure}):
         rules = applicable_robot_rules(robots, response.url)
 
         robots_meta = canonical = title = description = keywords = ''
@@ -198,8 +199,9 @@ def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False):
         flags |= re.IGNORECASE
     pattern = re.compile(pattern, flags)
 
-    session = requests.session(verify=not insecure)
-    for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):
+    for referer, response in get_pages(base,
+                                       VisitOnlyOnceClerk(),
+                                       session_settings={'verify': not insecure}):
         for line in response.content.split('\n'):
             if pattern.search(line):
                 print u'%s:%s' % (force_unicode(response.url), force_unicode(line))
@@ -209,8 +211,9 @@ def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False):
 
 def graphviz_spider(base, delay=0, insecure=False):
     print "digraph links {"
-    session = requests.session(verify=not insecure)
-    for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):
+    for referer, response in get_pages(base,
+                                       VisitOnlyOnceClerk(),
+                                       session_settings={'verify': not insecure}):
         for link in get_links(response):
             print '  "%s" -> "%s";' % (force_bytes(response.url), force_bytes(link))
             if delay:
