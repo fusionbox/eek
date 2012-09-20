@@ -34,6 +34,19 @@ class NotHtmlException(Exception):
     pass
 
 
+class task_wrapper(util.wrap_errors):
+    """
+    Rather than returning an Exception as the value of the greenlet, this will
+    put the Exception on to the queue as the return value.
+    """
+    def __call__(self, *args, **kwargs):
+        func = self.func
+        try:
+            return func(*args, **kwargs)
+        except self.errors:
+            results_queue = kwargs.pop('results_queue')
+            results_queue.put(sys.exc_info()[1])
+
 
 class VisitOnlyOnceClerk(object):
     def __init__(self):
@@ -109,7 +122,8 @@ def force_bytes(str_or_unicode):
         return str_or_unicode
 
 
-def fetcher_thread(clerk, results_queue, base_domain, session_settings):
+def fetcher_thread(clerk, base_domain, session_settings,
+                   results_queue=queue.Queue()):
     session = requests.session(**session_settings)
     for url, referer in clerk:
         url = force_bytes(url)
@@ -131,11 +145,14 @@ def get_pages(base, clerk, session_settings, workers=2):
     results_queue = queue.Queue()
     clerk.enqueue(base, base)
 
-    for w in range(workers):
-        gevent.spawn(fetcher_thread, clerk, results_queue,
-                     base_domain, session_settings)
+    for _ in range(workers):
+        gevent.spawn(task_wrapper(Exception, fetcher_thread),
+                     clerk, base_domain, session_settings,
+                     results_queue=results_queue)
 
     for i in results_queue:
+        if isinstance(i, Exception):
+            raise i
         yield i
         if (clerk.to_visit.unfinished_tasks == 0 and clerk.to_visit.empty() and
             results_queue.empty()):
