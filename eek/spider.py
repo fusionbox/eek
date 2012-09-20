@@ -126,7 +126,7 @@ def fetcher_thread(clerk, results_queue, base_domain, session_settings):
         clerk.task_done()
 
 
-def get_pages(base, clerk, session_settings, workers=2):
+def get_pages(base, clerk, session_settings, workers=1):
     base_domain = lremove(urlparse.urlparse(base).netloc, 'www.')
     results_queue = queue.Queue()
     clerk.enqueue(base, base)
@@ -142,7 +142,7 @@ def get_pages(base, clerk, session_settings, workers=2):
             raise StopIteration
 
 
-def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
+def metadata_spider(base, output=sys.stdout, delay=0, insecure=False, turbo=1):
     writer = csv.writer(output)
     robots = robotparser.RobotFileParser(base + '/robots.txt')
     robots.read()
@@ -151,7 +151,9 @@ def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
 
     for referer, response in get_pages(base,
                                        VisitOnlyOnceClerk(),
-                                       session_settings={'verify': not insecure}):
+                                       session_settings={'verify': not insecure},
+                                       workers=turbo,
+                                       ):
         rules = applicable_robot_rules(robots, response.url)
 
         robots_meta = canonical = title = description = keywords = ''
@@ -194,7 +196,7 @@ def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
             time.sleep(delay)
 
 
-def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False):
+def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False, turbo=1):
     flags = 0
     if insensitive:
         flags |= re.IGNORECASE
@@ -202,7 +204,9 @@ def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False):
 
     for referer, response in get_pages(base,
                                        VisitOnlyOnceClerk(),
-                                       session_settings={'verify': not insecure}):
+                                       session_settings={'verify': not insecure},
+                                       workers=turbo,
+                                       ):
         for line in response.content.split('\n'):
             if pattern.search(line):
                 print u'%s:%s' % (force_unicode(response.url), force_unicode(line))
@@ -210,11 +214,13 @@ def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False):
             time.sleep(delay)
 
 
-def graphviz_spider(base, delay=0, insecure=False):
+def graphviz_spider(base, delay=0, insecure=False, turbo=1):
     print "digraph links {"
     for referer, response in get_pages(base,
                                        VisitOnlyOnceClerk(),
-                                       session_settings={'verify': not insecure}):
+                                       session_settings={'verify': not insecure},
+                                       workers=turbo,
+                                       ):
         for link in get_links(response):
             print '  "%s" -> "%s";' % (force_bytes(response.url), force_bytes(link))
             if delay:

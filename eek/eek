@@ -20,6 +20,7 @@ parser.add_argument('--grep', type=str, help="Print urls containing PATTERN (a p
 parser.add_argument('-i', '--ignore-case', action='store_true', help="Ignore case. Only valid with --grep", dest="insensitive")
 parser.add_argument('-k', '--insecure', action='store_true', help="Don't validate SSL certificates", dest="insecure")
 parser.add_argument('-v', '--verbose', action='store_true', help="Be verbose", dest="verbose")
+parser.add_argument('--turbo', help="Issue more requests at a time", dest="turbo", default=1, type=int)
 args = parser.parse_args()
 
 base = args.url
@@ -32,17 +33,17 @@ if args.grep and args.graph:
     sys.exit(2)
 elif args.grep:
     command = grep_spider
-    kwargs = dict(base=base, delay=args.delay, pattern=args.grep, insensitive=args.insensitive, insecure=args.insecure)
+    kwargs = dict(base=base, delay=args.delay, pattern=args.grep, insensitive=args.insensitive, insecure=args.insecure, turbo=args.turbo)
 elif args.insensitive:
     sys.stdout.write("You can't use -i without --grep\n")
     parser.print_help()
     sys.exit(2)
 elif args.graph:
     command = graphviz_spider
-    kwargs = dict(base=base, delay=args.delay, insecure=args.insecure)
+    kwargs = dict(base=base, delay=args.delay, insecure=args.insecure, turbo=args.turbo)
 else:
     command = metadata_spider
-    kwargs = dict(base=base, delay=args.delay, insecure=args.insecure)
+    kwargs = dict(base=base, delay=args.delay, insecure=args.insecure, turbo=args.turbo)
 
 try:
     command(**kwargs)
