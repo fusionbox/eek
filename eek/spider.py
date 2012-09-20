@@ -126,13 +126,14 @@ def fetcher_thread(clerk, results_queue, base_domain, session_settings):
         clerk.task_done()
 
 
-def get_pages(base, clerk, session=requests.session(), workers=2):
+def get_pages(base, clerk, session_settings, workers=2):
     base_domain = lremove(urlparse.urlparse(base).netloc, 'www.')
     results_queue = queue.Queue()
     clerk.enqueue(base, base)
 
     for w in range(workers):
-        gevent.spawn(fetcher_thread, clerk, results_queue, base_domain)
+        gevent.spawn(fetcher_thread, clerk, results_queue,
+                     base_domain, session_settings)
 
     for i in results_queue:
         yield i
