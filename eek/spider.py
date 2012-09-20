@@ -15,6 +15,8 @@ from eek.BeautifulSoup import BeautifulSoup
 
 encoding_re = re.compile("charset\s*=\s*(\S+?)(;|$)")
 html_re = re.compile("text/html")
+
+
 def encoding_from_content_type(content_type):
     """
     Extracts the charset from a Content-Type header.
@@ -52,15 +54,19 @@ class VisitOnlyOnceClerk(object):
     def __init__(self):
         self.visited = set()
         self.to_visit = queue.JoinableQueue()
+
     def enqueue(self, url, referer):
         if not url in self.visited:
             self.to_visit.put((url, referer))
             self.visited.add(url)
+
     def __bool__(self):
         return bool(self.to_visit)
+
     def __iter__(self):
         for url, referer in self.to_visit:
             yield (url, referer)
+
     def task_done(self):
         self.to_visit.task_done()
 
@@ -154,6 +160,7 @@ def get_pages(base, clerk, session_settings, workers=2):
         if isinstance(i, Exception):
             raise i
         yield i
+        #  No more tasks to do and our results queue is exhausted.
         if (clerk.to_visit.unfinished_tasks == 0 and clerk.to_visit.empty() and
             results_queue.empty()):
             raise StopIteration
