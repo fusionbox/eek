@@ -83,13 +83,10 @@ def beautify(response):
         encoding = encoding_from_content_type(content_type)
     else:
         encoding = None
-    try:
-        return BeautifulSoup(
-                response.content,
-                fromEncoding=encoding,
-                convertEntities=BeautifulSoup.HTML_ENTITIES)
-    except UnicodeEncodeError:
-        raise NotHtmlException
+    return BeautifulSoup(
+            response.content,
+            fromEncoding=encoding,
+            convertEntities=BeautifulSoup.HTML_ENTITIES)
 
 
 def get_links(response):
