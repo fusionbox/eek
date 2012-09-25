@@ -3,8 +3,8 @@ import threading
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 
 HandlerClass = SimpleHTTPRequestHandler
-ServerClass  = BaseHTTPServer.HTTPServer
-Protocol     = "HTTP/1.0"
+ServerClass = BaseHTTPServer.HTTPServer
+Protocol = "HTTP/1.0"
 
 port = 8888
 server_address = ('127.0.0.1', port)
@@ -26,6 +26,86 @@ import csv
 import sys
 from StringIO import StringIO
 sort_by_url = lambda k: k['url']
+
+
+class TestBeautify(TestCase):
+    class MockResponse(object):
+        def __init__(self, content_type, content):
+            self.headers = {'content-type': content_type}
+            self.content = content
+
+    def test_return_BeautifulSoup_instance(self):
+        from eek.spider import beautify, html_re
+        from eek.BeautifulSoup import BeautifulSoup
+        response = self.MockResponse(html_re.pattern,
+                                     '<!doctype html><p>Hello</p>')
+        result = beautify(response)
+        self.assertIsInstance(result, BeautifulSoup)
+
+    def test_return_no_encoding(self):
+        from eek.spider import beautify
+        response = self.MockResponse('text/html',
+                                     '<!doctype html><p>Hello</p>')
+        result = beautify(response)
+        self.assertIsNone(result.fromEncoding)
+
+    def test_return_not_none_encoding(self):
+        from eek.spider import beautify
+        response = self.MockResponse('text/html; charset=utf-8',
+                                     '<!doctype html><p>Hello</p>')
+        result = beautify(response)
+        self.assertIsNotNone(result.fromEncoding)
+
+    def test_raise_NotHtmlException_on_messed_up_content_type(self):
+        from eek.spider import beautify, NotHtmlException
+        response = self.MockResponse('foo',
+                                     '<!doctype html><p>Hello</p>')
+        with self.assertRaises(NotHtmlException):
+            beautify(response)
+
+
+class TestSpiderUtilities(TestCase):
+
+    def test_encoding_from_content_type_none(self):
+        from eek.spider import encoding_from_content_type
+        self.assertIsNone(encoding_from_content_type('text/html'))
+
+    def test_encoding_from_content_type_with_charset(self):
+        from eek.spider import encoding_from_content_type
+        self.assertEquals(
+            encoding_from_content_type('text/html; charset=utf-8'),
+            'utf-8')
+
+    def test_lremove_prefix_exists(self):
+        from eek.spider import lremove
+        self.assertEquals(lremove('www.foo.com', 'www.'), 'foo.com')
+
+    def test_lremove_prefix_not_exists(self):
+        from eek.spider import lremove
+        self.assertEquals(lremove('www.foo.com', 'eggs'), 'www.foo.com')
+
+    def test_force_unicode_is_string_instance(self):
+        from eek.spider import force_unicode
+        uni_string = force_unicode('spam')
+        self.assertIsInstance(uni_string, unicode)
+        self.assertEquals(uni_string, u'spam')
+
+    def test_force_unicode_not_string_instance(self):
+        from eek.spider import force_unicode
+        result = force_unicode(5)
+        self.assertNotIsInstance(result, unicode)
+        self.assertEquals(result, 5)
+        result = force_unicode(None)
+        self.assertNotIsInstance(result, unicode)
+        self.assertEquals(result, None)
+
+    def test_force_bytes_unicode_literal(self):
+        from eek.spider import force_bytes
+        self.assertEquals(force_bytes(u'\u2603'), '\xe2\x98\x83')
+
+    def test_force_bytes_string(self):
+        from eek.spider import force_bytes
+        self.assertEquals(force_bytes('\xe2\x98\x83'), '\xe2\x98\x83')
 
 
 class FunctionalTests(TestCase):
