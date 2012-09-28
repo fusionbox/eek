@@ -34,14 +34,6 @@ class TestBeautify(TestCase):
             self.headers = {'content-type': content_type}
             self.content = content
 
-    def test_return_BeautifulSoup_instance(self):
-        from eek.spider import beautify, html_re
-        from eek.BeautifulSoup import BeautifulSoup
-        response = self.MockResponse(html_re.pattern,
-                                     '<!doctype html><p>Hello</p>')
-        result = beautify(response)
-        self.assertIsInstance(result, BeautifulSoup)
-
     def test_return_no_encoding(self):
         from eek.spider import beautify
         response = self.MockResponse('text/html',
