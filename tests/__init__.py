@@ -6,7 +6,7 @@ HandlerClass = SimpleHTTPRequestHandler
 ServerClass = BaseHTTPServer.HTTPServer
 Protocol = "HTTP/1.0"
 
-port = 8888
+port = 0  # os will pick an available port.
 server_address = ('127.0.0.1', port)
 
 HandlerClass.protocol_version = Protocol
@@ -101,7 +101,7 @@ class TestSpiderUtilities(TestCase):
 
 
 class FunctionalTests(TestCase):
-    base = 'http://localhost:%d/tests/html-files' % port
+    base = 'http://localhost:%d/tests/html-files' % sa[1]
 
     def setUp(self):
         self.tmp = tempfile.TemporaryFile()
