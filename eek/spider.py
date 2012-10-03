@@ -12,6 +12,9 @@ from eek.BeautifulSoup import BeautifulSoup
 
 encoding_re = re.compile("charset\s*=\s*(\S+?)(;|$)")
 html_re = re.compile("text/html")
+headers = ['url', 'title', 'description', 'keywords', 'allow', 'disallow',
+           'noindex', 'meta robots', 'canonical', 'referer', 'status']
+
 def encoding_from_content_type(content_type):
     """
     Extracts the charset from a Content-Type header.
@@ -132,12 +135,12 @@ def get_pages(base, clerk, session=requests.session()):
         yield referer, response
 
 
+
 def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
     writer = csv.writer(output)
     robots = robotparser.RobotFileParser(base + '/robots.txt')
     robots.read()
-    writer.writerow(['url', 'title', 'description', 'keywords', 'allow', 'disallow',
-                     'noindex', 'meta robots', 'canonical', 'referer', 'status'])
+    writer.writerow(headers)
 
     session = requests.session(verify=not insecure)
     for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):

@@ -25,5 +25,6 @@ setup(name='Eek',
     scripts=['eek/eek'],
     platforms = "any",
     license='BSD',
+    test_suite='tests',
     install_requires=install_requires,
 )
