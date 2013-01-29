@@ -17,6 +17,7 @@ parser.add_argument('url', help="The base URL to start the crawl", metavar='URL'
 parser.add_argument('--graph', default=False, const=True, help="output a graphviz digraph of links instead of CSV metadata", action='store_const')
 parser.add_argument('--delay', default=0, type=int, help="Time, in seconds, to wait in between fetches. Defaults to 0.", metavar="SECONDS")
 parser.add_argument('--grep', type=str, help="Print urls containing PATTERN (a python regular expression).", metavar="PATTERN")
+parser.add_argument('--replace', default=None, type=str, help="When used in conjuction with --grep, you can blah blah blah.", metavar="PATTERN")
 parser.add_argument('-i', '--ignore-case', action='store_true', help="Ignore case. Only valid with --grep", dest="insensitive")
 parser.add_argument('-k', '--insecure', action='store_true', help="Don't validate SSL certificates", dest="insecure")
 parser.add_argument('-v', '--verbose', action='store_true', help="Be verbose", dest="verbose")
@@ -32,7 +33,7 @@ if args.grep and args.graph:
     sys.exit(2)
 elif args.grep:
     command = grep_spider
-    kwargs = dict(base=base, delay=args.delay, pattern=args.grep, insensitive=args.insensitive, insecure=args.insecure)
+    kwargs = dict(base=base, delay=args.delay, pattern=args.grep, insensitive=args.insensitive, insecure=args.insecure, replace=args.replace)
 elif args.insensitive:
     sys.stdout.write("You can't use -i without --grep\n")
     parser.print_help()

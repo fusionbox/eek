@@ -186,7 +186,7 @@ def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
             time.sleep(delay)
 
 
-def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False):
+def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False, replace=None):
     flags = 0
     if insensitive:
         flags |= re.IGNORECASE
@@ -195,7 +195,10 @@ def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False):
     session = requests.session(verify=not insecure)
     for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):
         for line in response.content.split('\n'):
-            if pattern.search(line):
+            matches = pattern.match(line)
+            if matches:
+                if replace:
+                    line = re.sub(pattern, replace, matches.group(0))
                 print u'%s:%s' % (force_unicode(response.url), force_unicode(line))
         if delay:
             time.sleep(delay)
