@@ -21,7 +21,7 @@ optional arguments:
                      expression).
   -i, --ignore-case  Ignore case. Only valid with --grep
 
-To save output to a file, use, for example, eek URL > ~/Desktop/some_site.csv
+Example:
 
     eek http://example.com/
 
