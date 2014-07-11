@@ -9,6 +9,13 @@ import requests
 from eek import robotparser  # this project's version
 from bs4 import BeautifulSoup
 
+try:
+    import lxml
+except ImportError:
+    HTML_PARSER = None
+else:
+    HTML_PARSER = 'lxml'
+
 
 encoding_re = re.compile("charset\s*=\s*(\S+?)(;|$)")
 html_re = re.compile("text/html")
@@ -86,6 +93,7 @@ def beautify(response):
     try:
         return BeautifulSoup(
             response.content,
+            features=HTML_PARSER,
             from_encoding=encoding,
         )
     except UnicodeEncodeError:
