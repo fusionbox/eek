@@ -142,7 +142,8 @@ def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
     robots.read()
     writer.writerow(headers)
 
-    session = requests.session(verify=not insecure)
+    session = requests.session()
+    session.verify = not insecure
     for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):
         rules = applicable_robot_rules(robots, response.url)
 
@@ -192,7 +193,8 @@ def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False):
         flags |= re.IGNORECASE
     pattern = re.compile(pattern, flags)
 
-    session = requests.session(verify=not insecure)
+    session = requests.session()
+    session.verify = not insecure
     for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):
         for line in response.content.split('\n'):
             if pattern.search(line):
@@ -203,7 +205,8 @@ def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False):
 
 def graphviz_spider(base, delay=0, insecure=False):
     print "digraph links {"
-    session = requests.session(verify=not insecure)
+    session = requests.session()
+    session.verify = not insecure
     for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):
         for link in get_links(response):
             print '  "%s" -> "%s";' % (force_bytes(response.url), force_bytes(link))
