@@ -1,6 +1,7 @@
 import BaseHTTPServer
 import threading
 from SimpleHTTPServer import SimpleHTTPRequestHandler
+import doctest
 
 HandlerClass = SimpleHTTPRequestHandler
 ServerClass = BaseHTTPServer.HTTPServer
@@ -26,6 +27,12 @@ import csv
 import sys
 from StringIO import StringIO
 sort_by_url = lambda k: k['url']
+
+
+def load_tests(loader, tests, ignore):
+    from eek import spider
+    tests.addTests(doctest.DocTestSuite(spider))
+    return tests
 
 
 class TestBeautify(TestCase):
