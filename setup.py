@@ -7,7 +7,11 @@ __doc__="""
 Eek is an HTTP spider that collects metadata from HTML
 """
 
-install_requires = ['requests>=1.0.0']
+install_requires = [
+    'requests>=1.0.0',
+    'beautifulsoup4',
+]
+
 try:
     import argparse
 except:

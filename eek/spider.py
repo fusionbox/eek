@@ -7,7 +7,7 @@ import time
 import requests
 
 from eek import robotparser  # this project's version
-from eek.BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 
 
 encoding_re = re.compile("charset\s*=\s*(\S+?)(;|$)")
@@ -85,9 +85,9 @@ def beautify(response):
         encoding = None
     try:
         return BeautifulSoup(
-                response.content,
-                fromEncoding=encoding,
-                convertEntities=BeautifulSoup.HTML_ENTITIES)
+            response.content,
+            from_encoding=encoding,
+        )
     except UnicodeEncodeError:
         raise NotHtmlException
 
@@ -98,7 +98,7 @@ def get_links(response):
         yield urlparse.urldefrag(urlparse.urljoin(response.url, response.headers['location'], False))[0]
     try:
         html = beautify(response)
-        for i in html.findAll('a', href=True):
+        for i in html.find_all('a', href=True):
             yield urlparse.urldefrag(urlparse.urljoin(response.url, i['href'], False))[0]
     except NotHtmlException:
         pass
@@ -150,9 +150,9 @@ def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
         robots_meta = canonical = title = description = keywords = ''
         try:
             html = beautify(response)
-            robots_meta = ','.join(i['content'] for i in html.findAll('meta', {"name": "robots"}))
+            robots_meta = ','.join(i['content'] for i in html.find_all('meta', {"name": "robots"}))
             try:
-                canonical = html.findAll('link', {"rel": "canonical"})[0]['href']
+                canonical = html.find_all('link', {"rel": "canonical"})[0]['href']
             except IndexError:
                 pass
             try:
@@ -160,11 +160,11 @@ def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
             except (AttributeError, IndexError):
                 pass
             try:
-                description = html.head.findAll('meta', {"name": "description"})[0]['content']
+                description = html.head.find_all('meta', {"name": "description"})[0]['content']
             except (AttributeError, IndexError, KeyError):
                 pass
             try:
-                keywords = html.head.findAll('meta', {"name": "keywords"})[0]['content']
+                keywords = html.head.find_all('meta', {"name": "keywords"})[0]['content']
             except (AttributeError, IndexError, KeyError):
                 pass
         except NotHtmlException:
