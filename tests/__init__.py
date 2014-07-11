@@ -46,7 +46,7 @@ class TestBeautify(TestCase):
         response = self.MockResponse('text/html; charset=utf-8',
                                      '<!doctype html><p>Hello</p>')
         result = beautify(response)
-        self.assertIsNotNone(result.fromEncoding)
+        self.assertIsNotNone(result.original_encoding)
 
     def test_raise_NotHtmlException_on_messed_up_content_type(self):
         from eek.spider import beautify, NotHtmlException
