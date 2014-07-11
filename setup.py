@@ -17,9 +17,9 @@ try:
 except:
     install_requires.append('argparse')
 
-version = '0.0.1'
+version = '1.0.0'
 
-setup(name='Eek',
+setup(name='eek',
     version=version,
     description='eek',
     author='Gavin Wahl',
