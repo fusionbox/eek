@@ -95,7 +95,9 @@ def beautify(response):
 def get_links(response):
     if 300 <= response.status_code < 400 and response.headers['location']:
         # redirect
-        yield urlparse.urldefrag(urlparse.urljoin(response.url, response.headers['location'], False))[0]
+        yield urlparse.urldefrag(
+            urlparse.urljoin(response.url, response.headers['location'], False)
+        )[0]
     try:
         html = beautify(response)
         for i in html.find_all('a', href=True):
@@ -125,15 +127,15 @@ def get_pages(base, clerk, session=requests.session()):
         url = force_bytes(url)
         referer = force_bytes(referer)
         response = session.get(
-                url,
-                headers={'Referer': referer, 'User-Agent': 'Fusionbox spider'},
-                allow_redirects=False)
+            url,
+            headers={'Referer': referer, 'User-Agent': 'Fusionbox spider'},
+            allow_redirects=False,
+        )
         for link in get_links(response):
             parsed = urlparse.urlparse(link)
             if lremove(parsed.netloc, 'www.') == base_domain:
                 clerk.enqueue(link, url)
         yield referer, response
-
 
 
 def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
@@ -182,7 +184,8 @@ def metadata_spider(base, output=sys.stdout, delay=0, insecure=False):
             canonical,
             referer,
             response.status_code,
-            ]))
+        ]))
+
         if delay:
             time.sleep(delay)
 
