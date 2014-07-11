@@ -83,7 +83,7 @@ def lremove(string, prefix):
 
 
 def beautify(response):
-    content_type = response.headers['content-type']
+    content_type = response.headers.get('content-type')
     if content_type:
         if not html_re.search(content_type):
             raise NotHtmlException
