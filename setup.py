@@ -17,14 +17,16 @@ try:
 except:
     install_requires.append('argparse')
 
-version = '1.0.1'
+version = '1.0.2'
 
-setup(name='eek',
+setup(
+    name='eek',
     version=version,
-    description='eek',
+    description='Eek, a [web] spider.',
     author='Gavin Wahl',
     author_email='gwahl@fusionbox.com',
     long_description=__doc__,
+    url='https://github.com/fusionbox/eek',
     packages=['eek'],
     scripts=['eek/eek'],
     platforms = "any",
