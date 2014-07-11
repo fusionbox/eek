@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import re
+import sys
 from setuptools import setup
 
 
@@ -19,6 +20,10 @@ except:
 
 version = '1.0.2'
 
+tests_require = []
+if sys.version_info < (2, 7):
+    tests_require.append('unittest2')
+
 setup(
     name='eek',
     version=version,
@@ -33,4 +38,5 @@ setup(
     license='BSD',
     test_suite='tests',
     install_requires=install_requires,
+    tests_require=tests_require
 )

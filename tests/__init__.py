@@ -20,7 +20,11 @@ httpd_thread.setDaemon(True)
 print "Serving HTTP on", sa[0], "port", sa[1], "..."
 httpd_thread.start()
 
-from unittest import TestCase
+try:
+    from unittest2 import TestCase
+except ImportError:
+    from unittest import TestCase
+
 import tempfile
 import requests
 import csv
