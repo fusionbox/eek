@@ -11,6 +11,7 @@ def read(fname):
 install_requires = [
     'requests>=1.0.0',
     'beautifulsoup4',
+    'six',
 ]
 
 try:

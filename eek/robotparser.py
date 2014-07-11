@@ -9,8 +9,8 @@
     The robots.txt Exclusion Protocol is implemented as specified in
     http://info.webcrawler.com/mak/projects/robots/norobots-rfc.html
 """
-import urlparse
-import urllib
+from six.moves.urllib.parse import urlparse, quote, unquote
+from six.moves.urllib.request import FancyURLopener
 
 __all__ = ["RobotFileParser"]
 
@@ -49,7 +49,7 @@ class RobotFileParser:
     def set_url(self, url):
         """Sets the URL referring to a robots.txt file."""
         self.url = url
-        self.host, self.path = urlparse.urlparse(url)[1:3]
+        self.host, self.path = urlparse(url)[1:3]
 
     def read(self):
         """Reads the robots.txt URL and feeds it to the parser."""
@@ -104,7 +104,7 @@ class RobotFileParser:
             line = line.split(':', 1)
             if len(line) == 2:
                 line[0] = line[0].strip().lower()
-                line[1] = urllib.unquote(line[1].strip())
+                line[1] = unquote(line[1].strip())
                 if line[0] == "user-agent":
                     if state == 2:
                         self._add_entry(entry)
@@ -127,7 +127,7 @@ class RobotFileParser:
             return True
         # search for given user agent matches
         # the first match counts
-        url = urllib.quote(urlparse.urlparse(urllib.unquote(url))[2]) or "/"
+        url = quote(urlparse(unquote(url))[2]) or "/"
         for entry in self.entries:
             if entry.applies_to(useragent):
                 return entry.allowance(url)
@@ -149,7 +149,7 @@ class RuleLine:
         if path == '' and not allowance:
             # an empty value means allow all
             allowance = True
-        self.path = urllib.quote(path)
+        self.path = quote(path)
         self.allowance = allowance
 
     def applies_to(self, filename):
@@ -195,9 +195,9 @@ class Entry:
                 return line.allowance
         return 'allow'
 
-class URLopener(urllib.FancyURLopener):
+class URLopener(FancyURLopener):
     def __init__(self, *args):
-        urllib.FancyURLopener.__init__(self, *args)
+        FancyURLopener.__init__(self, *args)
         self.errcode = 200
 
     def prompt_user_passwd(self, host, realm):
@@ -207,5 +207,5 @@ class URLopener(urllib.FancyURLopener):
 
     def http_error_default(self, url, fp, errcode, errmsg, headers):
         self.errcode = errcode
-        return urllib.FancyURLopener.http_error_default(self, url, fp, errcode,
-                                                        errmsg, headers)
+        return FancyURLopener.http_error_default(self, url, fp, errcode,
+                                                 errmsg, headers)

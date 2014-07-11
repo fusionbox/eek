@@ -1,4 +1,7 @@
-import urlparse
+from __future__ import print_function
+
+import six
+from six.moves.urllib.parse import urldefrag, urljoin, urlparse
 import csv
 import sys
 import re
@@ -103,26 +106,26 @@ def beautify(response):
 def get_links(response):
     if 300 <= response.status_code < 400 and response.headers['location']:
         # redirect
-        yield urlparse.urldefrag(
-            urlparse.urljoin(response.url, response.headers['location'], False)
+        yield urldefrag(
+            urljoin(response.url, response.headers['location'], False)
         )[0]
     try:
         html = beautify(response)
         for i in html.find_all('a', href=True):
-            yield urlparse.urldefrag(urlparse.urljoin(response.url, i['href'], False))[0]
+            yield urldefrag(urljoin(response.url, i['href'], False))[0]
     except NotHtmlException:
         pass
 
 
 def force_unicode(s):
-    if isinstance(s, str):
-        return unicode(s, encoding='utf-8')
+    if isinstance(s, six.binary_type):
+        return six.text_type(s, encoding='utf-8')
     else:
         return s
 
 
 def force_bytes(str_or_unicode):
-    if isinstance(str_or_unicode, unicode):
+    if isinstance(str_or_unicode, six.text_type):
         return str_or_unicode.encode('utf-8')
     else:
         return str_or_unicode
@@ -130,7 +133,7 @@ def force_bytes(str_or_unicode):
 
 def get_pages(base, clerk, session=requests.session()):
     clerk.enqueue(base, base)
-    base_domain = lremove(urlparse.urlparse(base).netloc, 'www.')
+    base_domain = lremove(urlparse(base).netloc, 'www.')
     for (url, referer) in clerk:
         url = force_bytes(url)
         referer = force_bytes(referer)
@@ -140,7 +143,7 @@ def get_pages(base, clerk, session=requests.session()):
             allow_redirects=False,
         )
         for link in get_links(response):
-            parsed = urlparse.urlparse(link)
+            parsed = urlparse(link)
             if lremove(parsed.netloc, 'www.') == base_domain:
                 clerk.enqueue(link, url)
         yield referer, response
@@ -209,21 +212,21 @@ def grep_spider(base, pattern, delay=0, insensitive=False, insecure=False):
     for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):
         for line in response.content.split('\n'):
             if pattern.search(line):
-                print u'%s:%s' % (force_unicode(response.url), force_unicode(line))
+                print(u'%s:%s' % (force_unicode(response.url), force_unicode(line)))
         if delay:
             time.sleep(delay)
 
 
 def graphviz_spider(base, delay=0, insecure=False):
-    print "digraph links {"
+    print("digraph links {")
     session = requests.session()
     session.verify = not insecure
     for referer, response in get_pages(base, VisitOnlyOnceClerk(), session=session):
         for link in get_links(response):
-            print '  "%s" -> "%s";' % (force_bytes(response.url), force_bytes(link))
+            print('  "%s" -> "%s";' % (force_bytes(response.url), force_bytes(link)))
             if delay:
                 time.sleep(delay)
-    print "}"
+    print("}")
 
 
 def applicable_robot_rules(robots, url):

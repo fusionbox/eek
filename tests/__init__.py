@@ -1,7 +1,10 @@
-import BaseHTTPServer
+from __future__ import print_function
+
+from six.moves import BaseHTTPServer
 import threading
-from SimpleHTTPServer import SimpleHTTPRequestHandler
+from six.moves.SimpleHTTPServer import SimpleHTTPRequestHandler
 import doctest
+import six
 
 HandlerClass = SimpleHTTPRequestHandler
 ServerClass = BaseHTTPServer.HTTPServer
@@ -17,7 +20,7 @@ sa = httpd.socket.getsockname()
 
 httpd_thread = threading.Thread(target=httpd.serve_forever)
 httpd_thread.setDaemon(True)
-print "Serving HTTP on", sa[0], "port", sa[1], "..."
+print("Serving HTTP on", sa[0], "port", sa[1], "...")
 httpd_thread.start()
 
 try:
@@ -29,7 +32,7 @@ import tempfile
 import requests
 import csv
 import sys
-from StringIO import StringIO
+from six import StringIO
 sort_by_url = lambda k: k['url']
 
 
@@ -90,16 +93,16 @@ class TestSpiderUtilities(TestCase):
     def test_force_unicode_is_string_instance(self):
         from eek.spider import force_unicode
         uni_string = force_unicode('spam')
-        self.assertIsInstance(uni_string, unicode)
+        self.assertIsInstance(uni_string, six.text_type)
         self.assertEquals(uni_string, u'spam')
 
     def test_force_unicode_not_string_instance(self):
         from eek.spider import force_unicode
         result = force_unicode(5)
-        self.assertNotIsInstance(result, unicode)
+        self.assertNotIsInstance(result, six.text_type)
         self.assertEquals(result, 5)
         result = force_unicode(None)
-        self.assertNotIsInstance(result, unicode)
+        self.assertNotIsInstance(result, six.text_type)
         self.assertEquals(result, None)
 
     def test_force_bytes_unicode_literal(self):
