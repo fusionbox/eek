@@ -2,6 +2,10 @@
 
 Eek is a web crawler that outputs metadata about a website in CSV format.
 
+## Installation
+
+    $ pip install eek
+
 ## Usage
 usage: eek [-h] [--graph] [--delay SECONDS] [--grep PATTERN] [-i] URL
 
