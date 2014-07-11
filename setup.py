@@ -3,9 +3,9 @@ import os
 import re
 from setuptools import setup
 
-__doc__="""
-Eek is an HTTP spider that collects metadata from HTML
-"""
+
+def read(fname):
+    return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 install_requires = [
     'requests>=1.0.0',
@@ -25,7 +25,7 @@ setup(
     description='Eek, a [web] spider.',
     author='Gavin Wahl',
     author_email='gwahl@fusionbox.com',
-    long_description=__doc__,
+    long_description=read('README.rst'),
     url='https://github.com/fusionbox/eek',
     packages=['eek'],
     scripts=['eek/eek'],

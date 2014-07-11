@@ -1,16 +1,25 @@
-# Eek
+Eek
+===
 
-Eek is a web crawler that outputs metadata about a website in CSV format.
+Eek is a web crawler that outputs metadata about a website in CSV
+format.
 
-## Installation
+Installation
+------------
+
+::
 
     $ pip install eek
 
-## Usage
+Usage
+-----
+
 usage: eek [-h] [--graph] [--delay SECONDS] [--grep PATTERN] [-i] URL
 
-eek recursively crawls a website, outputing metadata about each page in CSV
-format.
+eek recursively crawls a website, outputing metadata about each page in
+CSV format.
+
+::
 
     positional arguments:
       URL                The base URL to start the crawl
@@ -27,10 +36,14 @@ format.
 
 Example:
 
+::
+
     eek http://example.com/
 
 To save output to a file, use redirection
-    
+
+::
+
     eek http://example.com/ > ~/some_file.csv
 
-To slow down crawling, use `--delay=[seconds]`
+To slow down crawling, use ``--delay=[seconds]``
